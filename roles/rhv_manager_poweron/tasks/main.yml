@@ -1,0 +1,14 @@
+---
+- name: Start RHV Manager
+  shell: hosted-engine --vm-start
+  when: inventory_hostname in groups.rhv_hosts
+  run_once: true
+
+- name: Wait for RHV Manager to start
+  shell: hosted-engine --vm-status | grep status
+  register: he_status
+  changed_when: false
+  until: "'good' in he_status.stdout"
+  retries: 20
+  delay: 10
+  when: inventory_hostname in groups.rhv_hosts

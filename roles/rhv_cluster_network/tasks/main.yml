@@ -1,0 +1,24 @@
+---
+- name: Create cluster logical networks
+  ovirt_network:
+    auth: "{{ ovirt_auth }}"
+    name: "{{ item.name }}"
+    description: "{{ item.name }} network"
+    mtu: "{{ item.mtu }}"
+    vlan_tag: "{{ item.vlan_tag }}"
+    data_center: "{{ datacenter_name }}"
+    vm_network: yes
+    clusters:
+    - { name: "{{ cluster_name }}" }
+  loop: "{{ networks.logical }}"
+
+- name: Assign cluster logical networks to RHV Host interfaces
+  ovirt_host_network:
+    auth: "{{ ovirt_auth }}"
+    name: "{{ hostvars[item.0].hostname }}"
+    networks:
+    - name: "{{ item.1.name }}"
+      boot_protocol: none
+    interface: "{{ networks.nics[0].device if not networks.bonds or networks.bonds|length < 2 else networks.bonds[1].device }}"
+    save: yes
+  loop: "{{ groups.rhv_hosts | product(networks.logical) | list | sort }}"

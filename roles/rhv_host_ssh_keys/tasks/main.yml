@@ -1,0 +1,81 @@
+---
+- name: Remove locally generated SSH key
+  file:
+    path: "{{ item }}"
+    state: absent
+    force: yes
+  delegate_to: localhost
+  run_once: true
+  loop:
+  - /tmp/rhv-ssh-key
+  - /tmp/rhv-ssh-key.pub
+
+- name: Check SSH key setup
+  stat:
+    path: /root/.ssh/id_rsa
+  register: host_ssh_key
+  when: inventory_hostname == groups.rhv_hosts | sort | first
+
+- name: Setup RHV Host SSH
+  block:
+  - name: Ensure /root/.ssh directory exists
+    file:
+      path: /root/.ssh
+      state: directory
+      mode: 0700
+      owner: root
+      group: root
+
+  - name: Allow RHV Host access with local user's SSH key
+    copy:
+      src: ~/.ssh/id_rsa.pub
+      dest: /root/.ssh/authorized_keys
+      mode: 0600
+      owner: root
+      group: root
+
+  - name: Generate RHV Host SSH key locally
+    command: ssh-keygen -b 4096 -C root@rhvh -N '' -f /tmp/rhv-ssh-key
+    delegate_to: localhost
+    run_once: true
+
+  - name: Install RHV Host private SSH key
+    copy:
+      src: /tmp/rhv-ssh-key
+      dest: /root/.ssh/id_rsa
+      mode: 0600
+      owner: root
+      group: root
+
+  - name: Install RHV Host public SSH key
+    copy:
+      src: /tmp/rhv-ssh-key.pub
+      dest: /root/.ssh/id_rsa.pub
+      mode: 0644
+      owner: root
+      group: root
+
+  - name: Allow RHV Host access with RHV Host SSH key
+    authorized_key:
+      user: root
+      state: present
+      key: "{{ lookup('file', '/tmp/rhv-ssh-key.pub') }}"
+
+  always:
+  - name: Remove locally generated SSH key
+    file:
+      path: "{{ item }}"
+      state: absent
+      force: yes
+    delegate_to: localhost
+    run_once: true
+    loop:
+    - /tmp/rhv-ssh-key
+    - /tmp/rhv-ssh-key.pub
+
+  when: host_ssh_key is not skipped and not host_ssh_key.stat.exists
+
+- name: Verify RHV Host SSH connectivity across all RHV Hosts
+  command: ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no {{ item }} /bin/true
+  loop: "{{ groups.rhv_hosts }}"
+  changed_when: false

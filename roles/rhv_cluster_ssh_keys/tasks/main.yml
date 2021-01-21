@@ -1,0 +1,16 @@
+---
+- name: Get ovirt-engine public SSH key
+  command: ssh-keygen -y -f /etc/pki/ovirt-engine/keys/engine_id_rsa
+  register: ovirt_engine_key
+  changed_when: false
+  when: inventory_hostname in groups.rhvm
+
+- name: Set ovirt-engine SSH key description
+  set_fact:
+    authorized_key: "{{ hostvars[groups.rhvm[0]].ovirt_engine_key.stdout + ' ovirt-engine' }}"
+
+- name: Allow access with ovirt-engine SSH key
+  lineinfile:
+    dest: /root/.ssh/authorized_keys
+    line: "{{ authorized_key }}"
+  when: inventory_hostname not in groups.rhvm

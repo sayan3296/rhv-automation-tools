@@ -1,0 +1,104 @@
+---
+- name: Remove servers from known_hosts file
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  max_fail_percentage: 0
+  tags: ['never', 'hw', 'bios']
+  roles:
+  #- verify_inventory
+  - ssh_known_hosts_clean
+
+# XXX TODO KICKSTART FROM SATELLITE XXX
+
+- name: Configure RHV Hosts
+  hosts: rhv_hosts
+  max_fail_percentage: 0
+  vars_files:
+  - vars/rhv.yml
+  - vars/cluster.yml
+  tags: ['never', 'rhv', 'hosts']
+  roles:
+  - rhv_etc_hosts_config
+  - rhv_time_config
+  - rhv_host_ssh_keys
+  - rh_server_subscribe
+  - rhv_host_repos
+  - role: rhv_firewall
+    firewall_allow_ports: "{{ rhv.host.firewall_allow_ports }}"
+    firewall_allow_services: "{{ rhv.host.firewall_allow_services }}"
+  - rhv_host_storage
+  - rhv_host_network
+  - rhv_base_config
+  - rhv_host_virt_who
+
+- name: Finalize RHV Hosts
+  hosts: rhv_hosts
+  max_fail_percentage: 0
+  tags: ['never', 'rhv', 'hosts']
+  roles:
+  - rhv_host_finalize
+
+- name: Deploy RHV Manager
+  hosts: "{{ groups.rhv_hosts | sort | first }}"
+  max_fail_percentage: 0
+  vars_files:
+  - vars/cluster.yml
+  tags: ['never', 'rhv', 'manager']
+  roles:
+  - rhv_rhvm_deploy
+
+- name: Configure RHV cluster SSH keys
+  hosts: rhvm, rhv_hosts
+  max_fail_percentage: 0
+  tags: ['never', 'rhv', 'manager']
+  roles:
+  - rhv_cluster_ssh_keys
+
+- name: Configure RHV Manager
+  hosts: rhvm
+  max_fail_percentage: 0
+  vars_files:
+  - vars/rhv.yml
+  - vars/cluster.yml
+  tags: ['never', 'rhv', 'manager']
+  roles:
+  - rhv_etc_hosts_config
+  - rhv_time_config
+  - rh_server_subscribe
+  - rhv_manager_repos
+  - role: rhv_firewall
+    firewall_allow_ports: "{{ rhv.manager.firewall_allow_ports }}"
+    firewall_allow_services: "{{ rhv.manager.firewall_allow_services }}"
+  - rhv_base_config
+
+# XXX TODO FIXME FOR RHV 4.4 XXX
+#- name: Update RHV Manager
+#  hosts: rhvm, rhv_hosts
+#  max_fail_percentage: 0
+#  tags: ['never', 'rhv', 'manager']
+#  roles:
+#  - rhv_manager_update
+
+- name: Configure RHV cluster
+  hosts: rhvm
+  max_fail_percentage: 0
+  vars_files:
+  - vars/cluster.yml
+  tags: ['never', 'rhv', 'manager']
+  roles:
+  - rhv_cluster_config
+  - ovirt_auth_token_obtain
+  - rhv_cluster_storage
+  - rhv_cluster_network
+  - ovirt_auth_token_revoke
+
+- name: Finalize RHV Manager
+  hosts: rhvm
+  max_fail_percentage: 0
+  tags: ['never', 'rhv', 'manager']
+  roles:
+  - ovirt_auth_token_obtain
+  - rhv_manager_version
+  - rhv_manager_finalize
+  - ovirt_auth_token_revoke

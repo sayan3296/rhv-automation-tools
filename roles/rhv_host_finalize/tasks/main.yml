@@ -1,0 +1,52 @@
+---
+- name: Check system status
+  command: systemctl status vdsmd.service
+  changed_when: false
+  failed_when: false
+  register: vdsmd_status
+
+- name: Clean yum repositories
+  command: yum -C clean all
+  args:
+    warn: no
+  when: vdsmd_status.rc != 0
+
+- name: Apply available updates
+  yum:
+    name: '*'
+    state: latest
+  when: vdsmd_status.rc != 0
+
+- name: Disable glusterd service
+  service:
+    name: glusterd
+    state: stopped
+    enabled: no
+  when: storage_type != "gluster"
+
+- name: Disable glustereventsd service
+  service:
+    name: glustereventsd
+    state: stopped
+    enabled: no
+  when: storage_type != "gluster"
+
+- name: Configure kdump service
+  lineinfile:
+    path: /etc/kdump.conf
+    line: "{{ item }}"
+    state: present
+  register: kdump_config
+  loop:
+  - "fence_kdump_args -p 7410 -i 5"
+  - "fence_kdump_nodes {{ hostvars[groups.rhvm[0]].hostname }}"
+
+- name: Enable kdump service
+  service:
+    name: kdump
+    state: "{{ 'restarted' if kdump_config is changed else 'started' }}"
+    enabled: yes
+
+- name: Reboot to apply all changes
+  reboot:
+  when: vdsmd_status.rc != 0

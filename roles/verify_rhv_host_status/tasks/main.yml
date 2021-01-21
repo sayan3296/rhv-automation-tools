@@ -1,0 +1,26 @@
+---
+- name: Verify CPU virtualization support features
+  shell: grep -E 'svm|vmx' /proc/cpuinfo | grep nx
+  changed_when: false
+
+- name: Get list of NICs
+  shell: nmcli device status | awk '/^e/ {print $1}'
+  register: nic_list
+  changed_when: false
+
+- name: Verify NIC status
+  shell: "ethtool -S {{ item }} | grep errors | grep -v ': 0' | awk '{print $2}' | tr '\n' '+' | sed -e 's,+, + ,g' -e 's,.$, 0,' | xargs expr"
+  register: nic_errors
+  failed_when: nic_errors.stdout|int > 25
+  changed_when: false
+  with_items: "{{ nic_list.stdout_lines | sort }}"
+
+- name: Verify RHV Host nodectl check status
+  command: nodectl --machine-readable check
+  register: nodectl_cmd
+  failed_when: nodectl_cmd.rc != 0 or '"bad"' in nodectl_cmd.stdout
+  changed_when: false
+
+- name: Verify firewalld status
+  command: systemctl status firewalld.service
+  changed_when: false

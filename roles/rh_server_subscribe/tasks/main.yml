@@ -1,0 +1,30 @@
+---
+- name: Install katello package from Satellite
+  yum:
+    name: "{{ satellite_url }}/pub/katello-ca-consumer-latest.noarch.rpm"
+    state: present
+    validate_certs: no
+  when: satellite_available | bool
+
+- name: Subscribe server to Satellite
+  redhat_subscription:
+    state: present
+    activationkey: "{{ satellite_activation_key }}"
+    org_id: "{{ satellite_org_id }}"
+  when: satellite_available | bool
+
+- name: Subscribe server to RHN
+  redhat_subscription:
+    state: present
+    username: "{{ rhn_username }}"
+    password: "{{ rhn_password }}"
+    auto_attach: yes
+  when: not satellite_available | bool and rhn_username is defined and rhn_password is defined
+
+- name: Refresh subscription-manager
+  command: subscription-manager refresh
+
+- name: Clean yum repositories
+  command: yum -C clean all
+  args:
+    warn: no

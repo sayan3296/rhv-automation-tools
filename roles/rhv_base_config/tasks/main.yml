@@ -1,0 +1,40 @@
+---
+- name: Configure keyboard
+  replace:
+    path: /etc/vconsole.conf
+    regexp: '^KEYMAP=.*'
+    replace: 'KEYMAP="{{ keyboard }}"'
+
+- name: Disable progress bar on system boot
+  replace:
+    path: "{{ item }}"
+    regexp: ' rhgb'
+    replace: ''
+  loop:
+  - /etc/default/grub
+  - /boot/grub2/grub.cfg
+
+- name: Disable RH Insights client timer service
+  service:
+    name: insights-client.timer
+    state: stopped
+    enabled: no
+  register: result
+  failed_when: result is failed and not 'Could not find the requested service' in result.msg
+  when: not satellite_available | bool
+
+- name: Disable RH Insights client service unit
+  systemd:
+    name: insights-client.service
+    state: stopped
+    enabled: no
+    masked: yes
+  register: result
+  failed_when: result is failed and not 'Could not find the requested service' in result.msg
+  when: not satellite_available | bool
+
+- name: Install bash-completion package
+  yum:
+    name: bash-completion
+    state: present
+  when: inventory_hostname in groups.rhvm

@@ -1,0 +1,6 @@
+---
+### XXX TODO XXX ###
+- name: Not implemented
+  connection: local
+  debug:
+    msg: "Not implemented yet!"

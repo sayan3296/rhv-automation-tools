@@ -1,0 +1,6 @@
+---
+# List of ports (80/tcp,123/udp) or services (cockpit,https)
+# Unlisted ports and services will be closed except for SSH
+firewall_allow_ports: []
+firewall_allow_services: []
+firewall_default_zone: public

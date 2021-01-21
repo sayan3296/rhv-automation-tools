@@ -1,0 +1,7 @@
+---
+- name: Enable virt-who service
+  service:
+    name: virt-who
+    state: started
+    enabled: yes
+  when: satellite_available | bool

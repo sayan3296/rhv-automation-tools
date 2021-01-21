@@ -1,0 +1,6 @@
+---
+- import_playbook: hw_cisco_config.yml
+  when: hw_target == 'cisco'
+
+- name: Configure RHV cluster
+  import_playbook: rhv_config.yml

@@ -1,0 +1,160 @@
+---
+### XXX TODO FIXME FOR RHV 4.4 ###
+- name: Abort if local backup directory is not defined
+  fail:
+    msg: Local backup directory rhvm_local_backup_dir not defined
+  when: rhvm_local_backup_dir is not defined
+  delegate_to: localhost
+  run_once: true
+
+- name: Set timestamp for created files
+  set_fact:
+    rhvm_backup_tstamp: "{{ lookup('pipe', 'date +%Y-%m-%d-%H-%M-%S') }}"
+
+- name: Detect latest backup file if not specified manually
+  shell: basename $(ls -t {{ rhvm_local_backup_dir }}/{{ cluster_name }}_rhvm_backup*xz | head -n 1)
+  register: rhvm_backup_file_basename
+  failed_when: rhvm_backup_file_basename.stdout|length == 0
+  delegate_to: localhost
+  run_once: true
+  when: rhvm_backup_file is not defined
+
+- name: Set backup file name
+  set_fact:
+    rhvm_backup_file: "{{ rhvm_backup_file_basename.stdout }}"
+  when: rhvm_backup_file is not defined
+
+- name: Display backup file to be used
+  debug:
+    msg: "{{ rhvm_local_backup_dir }}/{{ rhvm_backup_file }}"
+  delegate_to: localhost
+  run_once: true
+
+- name: Set backup log file name
+  set_fact:
+    rhvm_backup_log_file: "{{ cluster_name }}_rhvm_backup_{{ rhvm_backup_tstamp }}.log"
+  when: rhvm_backup_log_file is not defined
+
+- name: Upload backup file to RHV Manager
+  copy:
+    src: "{{ rhvm_local_backup_dir }}/{{ rhvm_backup_file }}"
+    dest: "/var/tmp/{{ rhvm_backup_file }}"
+  when: inventory_hostname in groups.rhvm
+
+- name: Activate RHV Manager Global Maintenance mode
+  include_role:
+    name: rhv_manager_maintenance_on
+
+- name: Stop httpd
+  service:
+    name: httpd
+    state: stopped
+  when: inventory_hostname in groups.rhvm
+
+- name: Stop ovirt-fence-kdump-listener
+  service:
+    name: ovirt-fence-kdump-listener
+    state: stopped
+  when: inventory_hostname in groups.rhvm
+
+- name: Stop ovirt-engine-dwhd
+  service:
+    name: ovirt-engine-dwhd
+    state: stopped
+  when: inventory_hostname in groups.rhvm
+
+- name: Stop ovirt-engine
+  service:
+    name: ovirt-engine
+    state: stopped
+  when: inventory_hostname in groups.rhvm
+
+- name: DROP engine database
+  shell: |
+    su postgres -c "psql -c 'DROP DATABASE engine;'"
+  register: psql_status
+  failed_when: psql_status.rc != 0 and 'does not exist' not in psql_status.stderr
+  when: inventory_hostname in groups.rhvm
+
+- name: DROP ovirt_engine_history database
+  shell: |
+    su postgres -c "psql -c 'DROP DATABASE ovirt_engine_history;'"
+  register: psql_status
+  failed_when: psql_status.rc != 0 and 'does not exist' not in psql_status.stderr
+  when: inventory_hostname in groups.rhvm
+
+- name: CREATE engine database
+  shell: >
+    su postgres -c "psql -c
+    \\\"CREATE DATABASE engine OWNER engine TEMPLATE template0 ENCODING UTF8
+    LC_COLLATE 'en_US.UTF-8' LC_CTYPE 'en_US.UTF-8';\\\""
+  when: inventory_hostname in groups.rhvm
+
+- name: CREATE ovirt_engine_history database
+  shell: >
+    su postgres -c "psql -c
+    \\\"CREATE DATABASE ovirt_engine_history OWNER engine TEMPLATE template0 ENCODING UTF8
+    LC_COLLATE 'en_US.UTF-8' LC_CTYPE 'en_US.UTF-8';\\\""
+  when: inventory_hostname in groups.rhvm
+
+- name: Run engine-backup in restore mode
+  shell: >
+    engine-backup
+    --mode=restore
+    --scope=all
+    --provision-all-databases
+    --restore-permissions
+    --file=/var/tmp/{{ rhvm_backup_file }}
+    --log=/var/tmp/{{ rhvm_backup_log_file }}
+    --tmpdir=/var/tmp
+    --archive-compressor=xz
+    --files-compressor=xz
+    --db-compressor=xz
+    --dwh-db-compressor=xz
+    --reports-db-compressor=xz
+    --db-dump-format=custom
+    --dwh-db-dump-format=custom
+    --reports-db-dump-format=custom
+    --db-restore-jobs=6
+    --dwh-db-restore-jobs=6
+  when: inventory_hostname in groups.rhvm
+
+- name: Start ovirt-engine
+  service:
+    name: ovirt-engine
+    state: started
+  when: inventory_hostname in groups.rhvm
+
+- name: Start ovirt-engine-dwhd
+  service:
+    name: ovirt-engine-dwhd
+    state: started
+  when: inventory_hostname in groups.rhvm
+
+- name: Start ovirt-fence-kdump-listener
+  service:
+    name: ovirt-fence-kdump-listener
+    state: stopped
+  when: inventory_hostname in groups.rhvm
+
+- name: Start httpd
+  service:
+    name: httpd
+    state: started
+  when: inventory_hostname in groups.rhvm
+
+- name: Remove backup file from RHV Manager
+  file:
+    path: "/var/tmp/{{ rhvm_backup_file }}"
+    state: absent
+  when: inventory_hostname in groups.rhvm
+
+- name: Remove backup log file from RHV Manager
+  file:
+    path: "/var/tmp/{{ rhvm_backup_log_file }}"
+    state: absent
+  when: inventory_hostname in groups.rhvm
+
+- name: Deactivate RHV Manager Global Maintenance mode
+  include_role:
+    name: rhv_manager_maintenance_off

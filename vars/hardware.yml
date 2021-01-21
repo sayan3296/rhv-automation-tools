@@ -1,0 +1,8 @@
+hardware:
+  firmware_minimum_versions:
+    ipmi: 1.2.3
+    bios: 4.5.6
+    raid: 7.8.9
+  consistent_firmware: true
+  hyperthreading_enabled: false
+  workload_profile: maximum_performance

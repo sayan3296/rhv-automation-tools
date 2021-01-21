@@ -1,0 +1,30 @@
+---
+- name: Attach RHV Manager subscription pool (Satellite)
+  redhat_subscription:
+    pool_ids: "{{ rhvm_subscription_pool_id }}"
+  when: satellite_available | bool
+
+- name: Attach RHV Manager subscription pool (RHN)
+  redhat_subscription:
+    pool_ids: "{{ rhvm_subscription_pool_id }}"
+    username: "{{ rhn_username }}"
+    password: "{{ rhn_password }}"
+  when: not satellite_available | bool
+
+- name: Refresh subscription-manager
+  command: subscription-manager refresh
+
+- name: Disable all repositories
+  rhsm_repository:
+    name: '*'
+    state: disabled
+
+- name: Enable RHV Manager repositories
+  rhsm_repository:
+    name: "{{ rhv.manager.repos }}"
+    state: enabled
+
+- name: Clean yum repositories
+  command: yum -C clean all
+  args:
+    warn: no

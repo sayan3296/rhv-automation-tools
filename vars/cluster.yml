@@ -1,0 +1,14 @@
+networks:
+  bonds:
+  #- { name: "mgmt_bond_dev", device: "bond0", mtu: 1500, opts: '"mode=1 miimon=100"' }
+  #- { name: "vmnet_bond_dev", device: "bond1", mtu: 9000, opts: '"mode=4 miimon=100 updelay=0 downdelay=0"' }
+  nics:
+  - { device: "ens3", mtu: 1500 }
+  #- { device: "ens3", mtu: 1500, master: "bond0" }
+  #- { device: "ens9", mtu: 1500, master: "bond0" }
+  #- { device: "ens10", mtu: 9000, master: "bond1" }
+  #- { device: "ens11", mtu: 9000, master: "bond1" }
+  logical:
+  - name: vmnet
+    mtu: 1500
+    vlan_tag: 123

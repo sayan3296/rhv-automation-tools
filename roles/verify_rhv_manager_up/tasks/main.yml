@@ -1,0 +1,6 @@
+---
+- name: Verify RHV Manager status from RHV Hosts
+  command: hosted-engine --vm-status --json
+  register: he_cmd
+  failed_when: he_cmd.rc != 0 or '"good"' not in he_cmd.stdout or '"Up"' not in he_cmd.stdout
+  changed_when: false

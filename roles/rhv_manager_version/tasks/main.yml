@@ -1,0 +1,21 @@
+---
+- name: Get oVirt API info
+  ovirt_api_info:
+    auth: "{{ ovirt_auth }}"
+  register: ovirt_info
+
+- name: Set RHV Manager release version (base)
+  set_fact:
+    rhvm_version_base: "{{ ovirt_info.ovirt_api.product_info.version.major }}.{{ ovirt_info.ovirt_api.product_info.version.minor }}"
+
+- name: Display RHV Manager release version (base)
+  debug:
+    var: rhvm_version_base
+
+- name: Set RHV Manager release version (full)
+  set_fact:
+    rhvm_version_full: "{{ ovirt_info.ovirt_api.product_info.version.major }}.{{ ovirt_info.ovirt_api.product_info.version.minor }}.{{ ovirt_info.ovirt_api.product_info.version.build }}"
+
+- name: Display RHV Manager release version (full)
+  debug:
+    var: rhvm_version_full

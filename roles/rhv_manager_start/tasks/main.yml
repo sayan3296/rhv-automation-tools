@@ -1,0 +1,8 @@
+---
+- name: Start RHV Manager
+  include_role:
+    name: rhv_manager_poweron
+
+- name: Deactivate RHV Manager Global Maintenance mode
+  include_role:
+    name: rhv_manager_maintenance_off

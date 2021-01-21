@@ -1,0 +1,25 @@
+DEVICE={{ item.device }}
+TYPE=Bond
+#ETHTOOL_OPTS="-K {{ item.device }} gro off"
+ONBOOT=yes
+BONDING_OPTS={{ item.opts }}
+BONDING_MASTER=yes
+MTU={{ item.mtu }}
+{% if item.name == "mgmt_bond_dev" %}
+IPV4_FAILURE_FATAL=yes
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_FAILURE_FATAL=no
+IPV6_ADDR_GEN_MODE=stable-privacy
+IPADDR={{ ip }}
+NETMASK={{ netmask }}
+GATEWAY={{ gateway }}
+{% for server in name_servers %}
+DNS{{ loop.index }}={{ server }}
+{% endfor %}
+DEFROUTE=yes
+IPV6_DEFROUTE=yes
+{% else %}
+DEFROUTE=no
+IPV6_DEFROUTE=no
+{% endif %}

@@ -1,0 +1,16 @@
+---
+- name: Shutdown RHV-M
+  shell: hosted-engine --vm-shutdown
+  register: he_shutdown
+  failed_when: he_shutdown.rc != 0 and 'VM is shutting down' not in he_shutdown.stderr
+  changed_when: he_shutdown.rc == 0
+  when: inventory_hostname in groups.rhv_hosts
+
+- name: Wait for RHV-M to shutdown
+  shell: hosted-engine --vm-status | grep -c Down
+  register: he_status
+  changed_when: false
+  until: "'1' in he_status.stdout"
+  retries: 20
+  delay: 10
+  when: inventory_hostname in groups.rhv_hosts

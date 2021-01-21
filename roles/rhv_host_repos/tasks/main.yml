@@ -1,0 +1,15 @@
+---
+- name: Disable all repositories
+  rhsm_repository:
+    name: '*'
+    state: disabled
+
+- name: Enable RHV Host repositories
+  rhsm_repository:
+    name: "{{ rhv.host.repos }}"
+    state: enabled
+
+- name: Clean yum repositories
+  command: yum -C clean all
+  args:
+    warn: no

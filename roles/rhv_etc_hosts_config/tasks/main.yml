@@ -1,0 +1,27 @@
+---
+- name: Create target remote_tmp
+  file:
+    path: "{{ ansible_env.HOME }}/.ansible/tmp"
+    mode: '0700'
+    state: directory
+
+- name: Add RHV Manager to /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    line: "{{ hostvars[item].ip + ' ' + hostvars[item].hostname }}"
+    state: present
+  loop: "{{ groups.rhvm }}"
+
+- name: Add RHV Hosts to /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    line: "{{ hostvars[item].ip + ' ' + hostvars[item].hostname }}"
+    state: present
+  loop: "{{ groups.rhv_hosts | sort }}"
+
+- name: Add Satellite to /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    line: "{{ satellite_host_ip + ' ' + satellite_hostname }}"
+    state: present
+  when: satellite_available | bool

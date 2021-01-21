@@ -1,0 +1,8 @@
+---
+- name: Active RHV Manager Global Maintenance mode
+  include_role:
+    name: rhv_manager_maintenance_on
+
+- name: Shutdown RHV Manager
+  include_role:
+    name: rhv_manager_shutdown

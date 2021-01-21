@@ -1,0 +1,25 @@
+---
+- name: Add cluster storage domain for VMs (NFS)
+  ovirt_storage_domain:
+    auth: "{{ ovirt_auth }}"
+    name: vmstore
+    state: present
+    data_center: "{{ datacenter_name }}"
+    host: "{{ groups.rhv_hosts | sort | first }}"
+    nfs:
+      address: "{{ nfs_server }}"
+      path: "{{ nfs_path_vmstore }}"
+      version: auto
+  when: storage_type == "nfs"
+
+- name: Add cluster storage domain for VMs (FC)
+  ovirt_storage_domain:
+    auth: "{{ ovirt_auth }}"
+    name: vmstore
+    state: present
+    data_center: "{{ datacenter_name }}"
+    host: "{{ groups.rhv_hosts | sort | first }}"
+    fcp:
+      lun_id: "{{ fc_lun_id_vmstore }}"
+      override_luns: yes
+  when: storage_type == "fc"

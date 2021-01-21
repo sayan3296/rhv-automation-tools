@@ -1,0 +1,29 @@
+---
+- name: Check network configuration
+  stat:
+    path: /etc/sysconfig/network-scripts/ifcfg-ovirtmgmt
+  register: ovirtmgmt_ifcfg_config
+
+- name: Configure RHV Host network
+  block:
+  - name: Create ifcfg files for bond devices
+    template:
+      src: ifcfg-bond
+      dest: /etc/sysconfig/network-scripts/ifcfg-{{ item.device }}
+    loop: "{{ networks.bonds | default([], true) }}"
+    register: bond_files
+
+  - name: Create ifcfg files for Ethernet devices
+    template:
+      src: ifcfg-device
+      dest: /etc/sysconfig/network-scripts/ifcfg-{{ item.device }}
+    loop: "{{ networks.nics }}"
+    register: device_files
+
+  - name: Restart network services
+    service:
+      name: NetworkManager
+      state: restarted
+    when: bond_files is changed or device_files is changed
+
+  when: not ovirtmgmt_ifcfg_config.stat.exists

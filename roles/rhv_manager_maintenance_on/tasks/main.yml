@@ -1,0 +1,14 @@
+---
+- name: Put RHV Manager into Global Maintenance mode
+  shell: hosted-engine --set-maintenance --mode=global
+  when: inventory_hostname in groups.rhv_hosts
+  run_once: true
+
+- name: Wait for Maintenance mode change to propagate
+  shell: hosted-engine --vm-status | grep state= | grep -v GlobalMaintenance || true
+  register: he_status
+  changed_when: false
+  until: he_status.stdout|length == 0
+  retries: 20
+  delay: 10
+  when: inventory_hostname in groups.rhv_hosts

@@ -1,0 +1,10 @@
+---
+- name: Check user account status
+  command: ovirt-aaa-jdbc-tool user show {{ rhv_user }}
+  register: user_tool
+  failed_when: false
+  changed_when: false
+
+- name: Delete user account
+  command: ovirt-aaa-jdbc-tool user delete {{ rhv_user }}
+  when: "'not found' not in user_tool.stderr"

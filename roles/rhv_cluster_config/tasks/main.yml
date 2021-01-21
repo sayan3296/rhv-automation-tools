@@ -1,0 +1,87 @@
+---
+- name: Install python3-ovirt-engine-sdk4 package
+  yum:
+    name: python3-ovirt-engine-sdk4
+    state: present
+
+- name: Obtain oVirt SSO token
+  ovirt_auth:
+    url: https://{{ hostvars[groups.rhvm[0]].hostname }}/ovirt-engine/api
+    username: admin@internal
+    password: "{{ rhvm_password_admin }}"
+
+- name: Add RHV Hosts to cluster
+  ovirt_host:
+    auth: "{{ ovirt_auth }}"
+    cluster: "{{ cluster_name }}"
+    name: "{{ hostvars[item].hostname }}"
+    address: "{{ hostvars[item].hostname }}"
+    hosted_engine: deploy
+    kdump_integration: enabled
+    override_iptables: yes
+    public_key: yes
+    state: present
+  loop: "{{ groups.rhv_hosts | sort }}"
+  when: item != groups.rhv_hosts | sort | first
+
+- name: Configure Power Management
+  ovirt_host_pm:
+    auth: "{{ ovirt_auth }}"
+    name: "{{ hostvars[item].hostname }}"
+    type: "{{ hw_ipmi_type }}"
+    address: "{{ hostvars[item].hw_ipmi_ip }}"
+    username: "{{ hostvars[item].hw_ipmi_username }}"
+    password: "{{ hostvars[item].hw_ipmi_password }}"
+    state: present
+    order: 1
+  loop: "{{ groups.rhv_hosts | sort }}"
+  when: hostvars[item].hw_ipmi_ip != ""
+
+- name: Enable Power Management
+  ovirt_host:
+    auth: "{{ ovirt_auth }}"
+    cluster: "{{ cluster_name }}"
+    name: "{{ hostvars[item].hostname }}"
+    power_management_enabled: yes
+  register: power_management_enable
+  loop: "{{ groups.rhv_hosts | sort }}"
+  when: hostvars[item].hw_ipmi_ip != ""
+
+- name: Revoke oVirt SSO token
+  ovirt_auth:
+    ovirt_auth: "{{ ovirt_auth }}"
+    state: absent
+
+- name: Get Power Management health checks status
+  command: engine-config -g PMHealthCheckEnabled
+  register: power_management_check
+  changed_when: false
+  when: not power_management_enable.results[0].skipped
+
+- name: Enable Power Management health checks
+  command: engine-config -s PMHealthCheckEnabled=true
+  register: power_management_config
+  when: power_management_check is not skipped and ' true ' not in power_management_check.stdout
+
+- name: Get user session timeout
+  command: engine-config -g UserSessionTimeOutInterval
+  register: user_session_timeout
+  changed_when: false
+
+- name: Set user session timeout to 30 minutes
+  command: engine-config -s UserSessionTimeOutInterval=30
+  register: user_timeout_config
+  changed_when: true
+  when: "' 30 ' not in user_session_timeout.stdout"
+
+- name: Restart ovirt-engine service
+  service:
+    name: ovirt-engine
+    state: restarted
+  register: ovirt_engine_restart
+  when: power_management_config is changed or user_timeout_config is changed
+
+- name: Allow ovirt-engine service to settle after restart
+  pause:
+    minutes: 1
+  when: ovirt_engine_restart is not skipped

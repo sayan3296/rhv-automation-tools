@@ -1,0 +1,25 @@
+---
+- import_playbook: hw_cisco_verify.yml
+  when: hw_target == 'cisco'
+
+- name: Verify RHV Hosts
+  hosts: rhv_hosts
+  max_fail_percentage: 0
+  tags: ['never', 'rhv', 'hosts']
+  roles:
+  - verify_rhv_host_up
+  - verify_rhv_host_status
+
+- name: Verify RHV Manager VM
+  hosts: rhv_hosts
+  max_fail_percentage: 0
+  tags: ['never', 'rhv', 'manager']
+  roles:
+  - verify_rhv_manager_up
+
+- name: Verify RHV Manager configuration
+  hosts: rhvm
+  max_fail_percentage: 0
+  tags: ['never', 'rhv', 'manager']
+  roles:
+  - verify_rhv_manager_status

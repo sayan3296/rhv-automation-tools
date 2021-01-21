@@ -1,0 +1,5 @@
+---
+- name: Revoke oVirt SSO token
+  ovirt_auth:
+    ovirt_auth: "{{ ovirt_auth }}"
+    state: absent

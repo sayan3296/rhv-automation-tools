@@ -1,0 +1,32 @@
+---
+- name: Create LVM filter with vdsm-tool
+  command: vdsm-tool config-lvm-filter -y
+  register: vdsm_tool_result
+  changed_when: "'filter is already configured' not in vdsm_tool_result.stdout"
+
+- name: Create vdsm multipath configuration directory
+  file:
+    path: /etc/multipath/conf.d/user.conf
+    state: directory
+
+- name: Check custom multipath configuration
+  stat:
+    path: "{{ role_path }}/files/multipath.conf"
+  register: multipath_file
+  delegate_to: localhost
+  run_once: true
+
+- name: Create custom multipath configuration
+  copy:
+    src: multipath.conf
+    dest: /etc/multipath/conf.d/user.conf/50-local.conf
+  register: multipath_config
+  when: multipath_file.stat.exists
+
+- name: Update initramfs for storage configuration changes
+  command: /usr/bin/dracut -f
+  when: vdsm_tool_result is changed or multipath_config is changed
+
+- name: Reboot system
+  reboot:
+  when: vdsm_tool_result is changed or multipath_config is changed

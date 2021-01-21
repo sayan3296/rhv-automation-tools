@@ -1,0 +1,64 @@
+---
+- name: Check RHV Manager deployment status
+  stat:
+    path: /etc/ovirt-hosted-engine/answers.conf
+  register: rhvm_deployment
+
+- name: RHV Manager deployment
+  block:
+  - name: Verify supported number of available RHV Hosts
+    assert:
+      that: "{{ groups.rhv_hosts|length }} < 8"
+      fail_msg: RHV Manager should be limited to at most 7 RHV Hosts
+      success_msg: RHV Manager fully supported in current configuration
+    delegate_to: localhost
+    run_once: true
+
+  - name: Read available entropy for RHV Manager deployment
+    slurp:
+      src: /proc/sys/kernel/random/entropy_avail
+    register: available_entropy
+
+  - name: Verify available entropy for RHV Manager deployment
+    assert:
+      that: "{{ available_entropy.content|b64decode|int }} >= 200"
+      fail_msg: Too low entropy on {{ inventory_hostname }}
+      success_msg: Enough entropy available for RHV Manager deployment
+
+  - name: Set RHV Manager deployment answers file
+    set_fact:
+      rhvm_deploy_answers_file: /root/rhvm_deploy_answers.conf
+
+  - name: Check RHV Manager deployment answer file
+    stat:
+      path: "{{ rhvm_deploy_answers_file }}"
+    register: answers_file
+
+  - name: Create RHV Manager deployment answers file
+    template:
+      src: rhvm_deploy_answers.conf.j2
+      dest: "{{ rhvm_deploy_answers_file }}"
+      owner: root
+      group: root
+      mode: 0600
+    when: not answers_file.stat.exists
+
+  - name: Deploy RHV Manager
+    command: hosted-engine --deploy --config-append={{ rhvm_deploy_answers_file }}
+
+  - name: Sanitize RHV Manager deployment answers file, part I
+    replace:
+      path: "{{ rhvm_deploy_answers_file }}"
+      regexp: 'Password=str:.*'
+      replace: 'Password=str:REMOVED'
+
+  - name: Sanitize RHV Manager deployment answers file, part II
+    replace:
+      path: "{{ rhvm_deploy_answers_file }}"
+      regexp: 'Pwd=str:.*'
+      replace: 'Pwd=str:REMOVED'
+
+  - name: Allow cluster to settle after deployment
+    pause:
+      minutes: 5
+  when: not rhvm_deployment.stat.exists

@@ -1,0 +1,7 @@
+---
+- name: Verify RHV Manager Power Management parameters
+  command: engine-config -g PMHealthCheckEnabled
+  register: ec_cmd
+  failed_when: ec_cmd.rc != 0 or ' true ' not in ec_cmd.stdout
+  changed_when: false
+  when: hostvars[groups.rhv_hosts[0]].hw_ipmi_ip != ""

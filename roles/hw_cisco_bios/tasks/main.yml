@@ -1,0 +1,3 @@
+---
+- name: Configure Cisco BIOS
+  include_tasks: hw_cisco_bios.yml

@@ -1,0 +1,6 @@
+---
+- name: Obtain oVirt SSO token
+  ovirt_auth:
+    url: https://{{ hostvars[groups.rhvm[0]].hostname }}/ovirt-engine/api
+    username: admin@internal
+    password: "{{ rhvm_password_admin }}"

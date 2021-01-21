@@ -1,0 +1,9 @@
+---
+- name: Verify Cisco cluster hardware
+  hosts: rhv_hosts
+  gather_facts: no
+  vars_files:
+  - vars/hardware.yml
+  tags: ['never', 'hw', 'bios', 'cisco']
+  roles:
+  - verify_hw_cisco_bios

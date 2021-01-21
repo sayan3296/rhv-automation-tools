@@ -1,0 +1,73 @@
+[all:vars]
+hw_target= cisco
+# See ovirt_host_pm module
+hw_ipmi_type= cisco_ucs
+
+rhn_username= 
+rhn_password= 
+rhvm_subscription_pool_id= 
+
+satellite_org_id= 
+satellite_available= false
+satellite_hostname= satellite.example.com
+satellite_host_ip= 192.168.122.250
+satellite_url= 
+
+gateway= 192.168.122.1
+netmask= 255.255.255.0
+name_servers= [ "192.168.122.1" ]
+ntp_servers= [ "time.cloudflare.com" ]
+
+timezone= Europe/Helsinki
+keyboard= fi
+
+rhvm_password_root= foobar
+rhvm_password_admin= foobar
+
+datacenter_name= Default
+cluster_name= Default
+cluster_ip_prefix= 24
+cluster_domain= example.com
+
+# nfs or fc
+storage_type= nfs
+nfs_server= 192.168.122.1
+nfs_path_engine= /srv/engine
+nfs_path_vmstore= /srv/vmstore
+fc_lun_id_engine= 
+fc_lun_id_vmstore= 
+
+[rhv_hosts:children]
+rhvh1
+rhvh2
+rhvh3
+
+[rhvm]
+rhvm.example.com hostname=rhvm.example.com ip=192.168.122.150
+
+[rhvh1]
+rhvh1.example.com hostname=rhvh1.example.com ip=192.168.122.151
+
+[rhvh2]
+rhvh2.example.com hostname=rhvh2.example.com ip=192.168.122.152
+
+[rhvh3]
+rhvh3.example.com hostname=rhvh3.example.com ip=192.168.122.153
+
+[rhvm:vars]
+satellite_activation_key= 
+
+[rhv_hosts:vars]
+satellite_activation_key= 
+
+hw_ipmi_username= 
+hw_ipmi_password= 
+
+[rhvh1:vars]
+hw_ipmi_ip= 
+
+[rhvh2:vars]
+hw_ipmi_ip= 
+
+[rhvh3:vars]
+hw_ipmi_ip= 

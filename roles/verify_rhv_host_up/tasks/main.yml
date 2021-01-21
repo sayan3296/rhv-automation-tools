@@ -1,0 +1,8 @@
+---
+- name: Verify server reachable over SSH
+  connection: local
+  wait_for:
+    port: 22
+    host: "{{ ansible_host }}"
+    search_regex: OpenSSH
+    timeout: 10

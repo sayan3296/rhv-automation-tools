@@ -1,0 +1,123 @@
+---
+### XXX TODO FIXME FOR RHV 4.4 ###
+- name: Install latest rhv-log-collector-analyzer package
+  yum:
+    name: rhv-log-collector-analyzer
+    state: latest
+  when: inventory_hostname in groups.rhvm
+
+- name: Run rhv-log-collector-analyzer update precheck
+  command: rhv-log-collector-analyzer --live
+  when: inventory_hostname in groups.rhvm
+
+- name: Read rhv-log-collector-analyzer update precheck results
+  shell: grep "Testing for" analyzer_report.html | grep -v successful | wc -l
+  register: precheck_results
+  changed_when: false
+  when: inventory_hostname in groups.rhvm
+
+- name: Verify rhv-log-collector-analyzer update precheck results
+  assert:
+    that: "'0' in precheck_results.stdout"
+    fail_msg: RHV Manager update precheck issues found by rhv-log-collector-analyzer
+    success_msg: No RHV Manager update precheck issues found
+  when: inventory_hostname in groups.rhvm
+
+- name: Remove rhv-log-collector-analyzer results file
+  file:
+    path: analyzer_report.html
+    state: absent
+  when: inventory_hostname in groups.rhvm
+
+- name: Check for RHV Manager updates
+  command: engine-upgrade-check -q
+  register: engine_upgrade_check
+  failed_when: engine_upgrade_check.rc == 2
+  changed_when: engine_upgrade_check.rc == 0
+  when: inventory_hostname in groups.rhvm
+
+- name: Check and download non-RHV Manager updates
+  yum:
+    name: '*'
+    state: latest
+    download_only: yes
+  register: os_updates
+  when: inventory_hostname in groups.rhvm
+
+- name: Set RHV Manager update answers file
+  set_fact:
+    answers_file: /root/rhvm_update_answers.conf
+  when:
+  - inventory_hostname in groups.rhvm
+  - engine_upgrade_check.rc == 0
+
+- name: Copy RHV Manager update answers file
+  copy:
+    src: rhvm_update_answers.conf
+    dest: "{{ answers_file }}"
+    mode: 0644
+  when:
+  - inventory_hostname in groups.rhvm
+  - engine_upgrade_check.rc == 0
+
+- name: Put RHV Manager into Global Maintenance mode
+  include_role:
+    name: rhv_manager_maintenance_on
+  when:
+  - inventory_hostname in groups.rhv_hosts
+  - hostvars[groups.rhvm[0]].engine_upgrade_check.rc == 0 or
+    hostvars[groups.rhvm[0]].os_updates is changed
+
+- name: Update RHV Manager setup packages
+  yum:
+    name:
+    - 'ovirt*setup*'
+    - 'rh*vm-setup-plugins*'
+    state: latest
+  when:
+  - inventory_hostname in groups.rhvm
+  - engine_upgrade_check.rc == 0
+
+- name: Update RHV Manager
+  command: engine-setup --config-append={{ answers_file }}
+  when:
+  - inventory_hostname in groups.rhvm
+  - engine_upgrade_check.rc == 0
+
+- name: Apply available non-RHV Manager updates
+  yum:
+    name: '*'
+    state: latest
+  when: inventory_hostname in groups.rhvm
+
+- name: Remove RHV Manager update answers file
+  file:
+    path: "{{ answers_file }}"
+    state: absent
+  when:
+  - inventory_hostname in groups.rhvm
+  - engine_upgrade_check.rc == 0
+
+- name: Shutdown RHV Manager
+  include_role:
+    name: rhv_manager_shutdown
+  when:
+  - inventory_hostname in groups.rhv_hosts
+  - hostvars[groups.rhvm[0]].engine_upgrade_check.rc == 0 or
+    hostvars[groups.rhvm[0]].os_updates is changed
+
+- name: Power on RHV Manager
+  include_role:
+    name: rhv_manager_poweron
+  when:
+  - inventory_hostname in groups.rhv_hosts
+  - hostvars[groups.rhvm[0]].engine_upgrade_check.rc == 0 or
+    hostvars[groups.rhvm[0]].os_updates is changed
+
+- name: Move RHV Manager out of Global Maintenance mode
+  include_role:
+    name: rhv_manager_maintenance_off
+  when:
+  - inventory_hostname in groups.rhv_hosts
+  - hostvars[groups.rhvm[0]].engine_upgrade_check.rc == 0 or
+    hostvars[groups.rhvm[0]].os_updates is changed

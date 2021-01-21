@@ -1,0 +1,3 @@
+---
+- name: Verify Cisco BIOS
+  include_tasks: verify_hw_cisco_bios.yml

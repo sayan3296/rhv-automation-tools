@@ -1,0 +1,35 @@
+---
+- name: Set timezone
+  timezone:
+    name: "{{ timezone }}"
+
+- name: Configure chronyd service
+  template:
+    src: chrony.conf
+    dest: /etc/chrony.conf
+  register: chronyd_config
+
+- name: Create systemd override for chronyd service
+  file:
+    path: /etc/systemd/system/chronyd.service.d
+    state: directory
+
+- name: Ensure chronyd service starts after networking
+  copy:
+    dest: /etc/systemd/system/chronyd.service.d/override.conf
+    content: |
+      [Unit]
+      After=network-online.target
+      Wants=network-online.target
+  register: chronyd_service
+
+- name: Reload systemd
+  systemd:
+    daemon_reload: yes
+  when: chronyd_service is changed
+
+- name: Enable chronyd service
+  service:
+    name: chronyd
+    state: "{{ 'restarted' if chronyd_config is changed else 'started' }}"
+    enabled: yes

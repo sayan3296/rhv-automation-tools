@@ -1,0 +1,45 @@
+rhv:
+  host:
+    firewall_allow_ports:
+    - 22/tcp
+    ##- 2223/tcp
+    ##- 5900-6923/tcp
+    - 6081/udp
+    - 6900/tcp
+    - 16514/tcp
+    - 49152-49215/tcp
+    - 54321/tcp
+    - 54322/tcp
+    firewall_allow_services:
+    - ssh
+    - cockpit
+    ##- glusterfs
+    - libvirt
+    - libvirt-tls
+    - ovirt-imageio
+    - ovirt-vmconsole
+    - snmp
+    - vdsm
+    repos:
+    - rhvh-4-for-rhel-8-x86_64-rpms
+  manager:
+    firewall_allow_ports:
+    firewall_allow_services:
+    - ssh
+    - cockpit
+    - ovirt-fence-kdump-listener
+    - ovirt-http
+    - ovirt-https
+    - ovirt-imageio-proxy
+    - ovirt-postgres
+    - ovirt-provider-ovn
+    - ovirt-vmconsole-proxy
+    - ovirt-websocket-proxy
+    - ovn-central-firewall-service
+    repos:
+    - rhel-8-for-x86_64-baseos-rpms
+    - rhel-8-for-x86_64-appstream-rpms
+    - rhv-4.4-manager-for-rhel-8-x86_64-rpms
+    - fast-datapath-for-rhel-8-x86_64-rpms
+    - ansible-2.9-for-rhel-8-x86_64-rpms
+    - jb-eap-7.3-for-rhel-8-x86_64-rpms

@@ -1,0 +1,8 @@
+---
+- name: Stop RHV Manager
+  include_role:
+    name: rhv_manager_stop
+
+- name: Start RHV Manager
+  include_role:
+    name: rhv_manager_start

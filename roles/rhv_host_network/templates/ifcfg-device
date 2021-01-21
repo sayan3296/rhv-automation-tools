@@ -1,0 +1,27 @@
+DEVICE={{ item.device }}
+TYPE=Ethernet
+#ETHTOOL_OPTS="-K {{ item.device }} gro off"
+ONBOOT=yes
+{% if "master" in item and item.master != "" %}
+MASTER={{ item.master }}
+SLAVE=yes
+{% endif %}
+MTU={{ item.mtu }}
+IPV4_FAILURE_FATAL=yes
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_FAILURE_FATAL=no
+IPV6_ADDR_GEN_MODE=stable-privacy
+{% if "master" in item and item.master != "" %}
+DEFROUTE=no
+IPV6_DEFROUTE=no
+{% else %}
+IPADDR={{ ip }}
+NETMASK={{ netmask }}
+GATEWAY={{ gateway }}
+{% for server in name_servers %}
+DNS{{ loop.index }}={{ server }}
+{% endfor %}
+DEFROUTE=yes
+IPV6_DEFROUTE=yes
+{% endif %}

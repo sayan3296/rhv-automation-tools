@@ -1,0 +1,71 @@
+---
+- name: Install firewalld package
+  yum:
+    name: firewalld
+    state: present
+
+- name: Disallow zone drifting
+  replace:
+    dest: /etc/firewalld/firewalld.conf
+    regexp: '^AllowZoneDrifting=yes'
+    replace: 'AllowZoneDrifting=no'
+  register: firewalld_config
+
+- name: Enable firewalld service
+  service:
+    name: firewalld
+    state: "{{ 'restarted' if firewalld_config is changed else 'started' }}"
+    enabled: yes
+
+- name: Set default zone
+  command: firewall-cmd --set-default-zone={{ firewall_default_zone | default('public') }}
+  register: cmd_result
+  changed_when: "'ZONE_ALREADY_SET' not in cmd_result.stderr"
+
+- name: Allow configured ports
+  firewalld:
+    zone: "{{ firewall_default_zone | default('public') }}"
+    port: "{{ item }}"
+    permanent: yes
+    immediate: yes
+    state: enabled
+  loop: "{{ firewall_allow_ports | default([], true) }}"
+
+- name: Check open ports
+  command: firewall-cmd --zone={{ firewall_default_zone | default('public') }} --list-ports
+  register: open_ports
+  changed_when: false
+
+- name: Close unallowed ports
+  firewalld:
+    zone: "{{ firewall_default_zone | default('public') }}"
+    port: "{{ item }}"
+    permanent: yes
+    immediate: yes
+    state: disabled
+  loop: "{{ open_ports.stdout.split(' ') }}"
+  when: item not in firewall_allow_ports
+
+- name: Allow configured services
+  firewalld:
+    zone: "{{ firewall_default_zone | default('public') }}"
+    service: "{{ item }}"
+    permanent: yes
+    immediate: yes
+    state: enabled
+  loop: "{{ firewall_allow_services | default([], true) }}"
+
+- name: Check open services
+  command: firewall-cmd --zone={{ firewall_default_zone | default('public') }} --list-services
+  register: open_services
+  changed_when: false
+
+- name: Close unallowed services
+  firewalld:
+    zone: "{{ firewall_default_zone | default('public') }}"
+    service: "{{ item }}"
+    permanent: yes
+    immediate: yes
+    state: disabled
+  loop: "{{ open_services.stdout.split(' ') }}"
+  when: item != "ssh" and item not in firewall_allow_services

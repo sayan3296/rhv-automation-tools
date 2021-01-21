@@ -1,0 +1,14 @@
+---
+- name: Check user account status
+  command: echo ovirt-aaa-jdbc-tool user show {{ rhv_user }}
+  register: user_tool
+  failed_when: false
+  changed_when: false
+
+- name: Create user account
+  command: echo ovirt-aaa-jdbc-tool user add {{ rhv_user }} --attribute=firstName={{ rhv_user_firstname }} --attribute=lastName={{ rhv_user_lastname }}
+  when: "'not found' in user_tool.stderr"
+
+- name: Set user password
+  command: echo ovirt-aaa-jdbc-tool user password-reset --force {{ rhv_user }} --password=pass:\"{{ rhv_user_password }}\" --password-valid-to=\"{{ rhv_user_pw_valid_to }}\"
+  when: "'not found' in user_tool.stderr"

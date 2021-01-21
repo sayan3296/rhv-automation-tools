@@ -1,0 +1,19 @@
+---
+- name: Remove unneeded firmware packages
+  yum:
+    name:
+    - 'a*firmware'
+    - 'i*firmware'
+    - 'lib*firmware'
+    - 'z*firmware'
+    state: absent
+
+- name: Enable kdump service
+  service:
+    name: kdump
+    enabled: yes
+
+- name: Log RHV deployment complete
+  syslogger:
+    facility: user
+    msg: "RHV deployment complete."

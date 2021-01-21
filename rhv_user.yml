@@ -1,0 +1,22 @@
+---
+- name: Add RHV internal user
+  hosts: rhvm
+  max_fail_percentage: 0
+  vars:
+    rhv_user: someuser
+    rhv_user_firstname: Some
+    rhv_user_lastname: User
+    rhv_user_password: foobar
+    rhv_user_pw_valid_to: "2029-12-31 23:59:59Z"
+  tags: ['never', 'add']
+  roles:
+  - rhv_user_add
+
+- name: Delete RHV internal user
+  hosts: rhvm
+  max_fail_percentage: 0
+  vars:
+    rhv_user: someuser
+  tags: ['never', 'delete']
+  roles:
+  - rhv_user_delete

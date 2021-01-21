@@ -1,0 +1,7 @@
+---
+- name: Remove servers from known_hosts file
+  known_hosts:
+    name: "{{ hostvars[item].hostname }}"
+    state: absent
+  loop: "{{ groups.rhvm + groups.rhv_hosts}}"
+  failed_when: false
