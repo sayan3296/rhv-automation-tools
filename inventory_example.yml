@@ -1,41 +1,54 @@
 [all:vars]
 hw_target= cisco
-# See ovirt_host_pm module
+# See Ansible ovirt_host_pm module doc
 hw_ipmi_type= cisco_ucs
 
+# Register to RHN
 rhn_username= 
 rhn_password= 
 rhvm_subscription_pool_id= 
 
-satellite_org_id= 
+# Register to Satellite
 satellite_available= false
 satellite_hostname= satellite.example.com
 satellite_host_ip= 192.168.122.250
+satellite_org_id= 
 satellite_url= 
 
+# Networking
 gateway= 192.168.122.1
 netmask= 255.255.255.0
 name_servers= [ "192.168.122.1" ]
 ntp_servers= [ "time.cloudflare.com" ]
 
+# Basics
 timezone= Europe/Helsinki
 keyboard= fi
 
+# RHV Manager
+# See roles/rhv_rhvm_deploy/templates/rhvm_deploy_answers.conf.j2
 rhvm_password_root= foobar
 rhvm_password_admin= foobar
+rhvm_vm_image_size= 59
+rhvm_vm_memory= 4096
+rhvm_vm_vcpus= 4
 
+# RHV cluster
 datacenter_name= Default
 cluster_name= Default
 cluster_ip_prefix= 24
 cluster_domain= example.com
 
-# nfs or fc
+# RHV cluster storage: nfs or fc
 storage_type= nfs
 nfs_server= 192.168.122.1
 nfs_path_engine= /srv/engine
 nfs_path_vmstore= /srv/vmstore
 fc_lun_id_engine= 
 fc_lun_id_vmstore= 
+
+# RHV cluster network
+# See vars/network.yml
 
 [rhv_hosts:children]
 rhvh1
