@@ -1,5 +1,4 @@
 ---
-### XXX TODO FIXME FOR RHV 4.4 ###
 - name: Install latest rhv-log-collector-analyzer package
   yum:
     name: rhv-log-collector-analyzer
@@ -29,6 +28,14 @@
     state: absent
   when: inventory_hostname in groups.rhvm
 
+# https://access.redhat.com/solutions/5480561
+- name: Fix dnf configuration (RHKB#5480561)
+  replace:
+    path: /etc/dnf/dnf.conf
+    regexp: '^best=.*'
+    replace: 'best=False'
+  when: inventory_hostname in groups.rhvm
+
 - name: Check for RHV Manager updates
   command: engine-upgrade-check -q
   register: engine_upgrade_check
@@ -46,7 +53,7 @@
 
 - name: Set RHV Manager update answers file
   set_fact:
-    answers_file: /root/rhvm_update_answers.conf
+    rhvm_update_answers_file: /root/rhvm_update_answers.conf
   when:
   - inventory_hostname in groups.rhvm
   - engine_upgrade_check.rc == 0
@@ -54,7 +61,7 @@
 - name: Copy RHV Manager update answers file
   copy:
     src: rhvm_update_answers.conf
-    dest: "{{ answers_file }}"
+    dest: "{{ rhvm_update_answers_file }}"
     mode: 0644
   when:
   - inventory_hostname in groups.rhvm
@@ -79,7 +86,7 @@
   - engine_upgrade_check.rc == 0
 
 - name: Update RHV Manager
-  command: engine-setup --config-append={{ answers_file }}
+  command: engine-setup --config-append={{ rhvm_update_answers_file }}
   when:
   - inventory_hostname in groups.rhvm
   - engine_upgrade_check.rc == 0
@@ -88,11 +95,13 @@
   yum:
     name: '*'
     state: latest
-  when: inventory_hostname in groups.rhvm
+  when:
+  - inventory_hostname in groups.rhvm
+  - os_updates is changed
 
 - name: Remove RHV Manager update answers file
   file:
-    path: "{{ answers_file }}"
+    path: "{{ rhvm_update_answers_file }}"
     state: absent
   when:
   - inventory_hostname in groups.rhvm

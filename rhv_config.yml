@@ -9,7 +9,7 @@
   #- verify_inventory
   - ssh_known_hosts_clean
 
-# XXX TODO KICKSTART FROM SATELLITE XXX
+### XXX TODO KICKSTART FROM SATELLITE XXX ###
 
 - name: Configure RHV Hosts
   hosts: rhv_hosts
@@ -72,13 +72,12 @@
     firewall_allow_services: "{{ rhv.manager.firewall_allow_services }}"
   - rhv_base_config
 
-# XXX TODO FIXME FOR RHV 4.4 XXX
-#- name: Update RHV Manager
-#  hosts: rhvm, rhv_hosts
-#  max_fail_percentage: 0
-#  tags: ['never', 'rhv', 'manager']
-#  roles:
-#  - rhv_manager_update
+- name: Update RHV Manager
+  hosts: rhvm, rhv_hosts
+  max_fail_percentage: 0
+  tags: ['never', 'rhv', 'manager']
+  roles:
+  - rhv_manager_update
 
 - name: Configure RHV cluster
   hosts: rhvm

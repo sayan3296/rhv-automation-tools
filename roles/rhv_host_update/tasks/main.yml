@@ -1,0 +1,10 @@
+---
+- name: Update RHV Host
+  ovirt_host:
+    auth: "{{ ovirt_auth }}"
+    name: "{{ inventory_hostname }}"
+    state: upgraded
+    public_key: yes
+    check_upgrade: yes
+    reboot_after_upgrade: yes
+    timeout: 900
