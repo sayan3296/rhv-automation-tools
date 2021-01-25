@@ -16,7 +16,7 @@
   max_fail_percentage: 0
   vars_files:
   - vars/rhv.yml
-  - vars/cluster.yml
+  - vars/network.yml
   tags: ['never', 'rhv', 'hosts']
   roles:
   - rhv_etc_hosts_config
@@ -43,7 +43,7 @@
   hosts: "{{ groups.rhv_hosts | sort | first }}"
   max_fail_percentage: 0
   vars_files:
-  - vars/cluster.yml
+  - vars/network.yml
   tags: ['never', 'rhv', 'manager']
   roles:
   - rhv_rhvm_deploy
@@ -60,7 +60,7 @@
   max_fail_percentage: 0
   vars_files:
   - vars/rhv.yml
-  - vars/cluster.yml
+  - vars/network.yml
   tags: ['never', 'rhv', 'manager']
   roles:
   - rhv_etc_hosts_config
@@ -84,7 +84,7 @@
   hosts: rhvm
   max_fail_percentage: 0
   vars_files:
-  - vars/cluster.yml
+  - vars/network.yml
   tags: ['never', 'rhv', 'manager']
   roles:
   - rhv_cluster_config
