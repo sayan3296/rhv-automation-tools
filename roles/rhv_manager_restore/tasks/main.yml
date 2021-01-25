@@ -1,5 +1,4 @@
 ---
-### XXX TODO FIXME FOR RHV 4.4 ###
 - name: Abort if local backup directory is not defined
   fail:
     msg: Local backup directory rhvm_local_backup_dir not defined
@@ -9,10 +8,12 @@
 
 - name: Set timestamp for created files
   set_fact:
-    rhvm_backup_tstamp: "{{ lookup('pipe', 'date +%Y-%m-%d-%H-%M-%S') }}"
+    rhvm_backup_timestamp: "{{ lookup('pipe', 'date +%Y-%m-%d-%H-%M-%S') }}"
+  delegate_to: localhost
+  run_once: true
 
 - name: Detect latest backup file if not specified manually
-  shell: basename $(ls -t {{ rhvm_local_backup_dir }}/{{ cluster_name }}_rhvm_backup*xz | head -n 1)
+  shell: basename $(ls -t {{ rhvm_local_backup_dir }}/rhvm_backup_{{ cluster_domain }}_*xz | head -n 1)
   register: rhvm_backup_file_basename
   failed_when: rhvm_backup_file_basename.stdout|length == 0
   delegate_to: localhost
@@ -22,6 +23,8 @@
 - name: Set backup file name
   set_fact:
     rhvm_backup_file: "{{ rhvm_backup_file_basename.stdout }}"
+  delegate_to: localhost
+  run_once: true
   when: rhvm_backup_file is not defined
 
 - name: Display backup file to be used
@@ -32,13 +35,15 @@
 
 - name: Set backup log file name
   set_fact:
-    rhvm_backup_log_file: "{{ cluster_name }}_rhvm_backup_{{ rhvm_backup_tstamp }}.log"
+    rhvm_backup_log_file: "rhvm_backup_{{ cluster_domain }}_{{ rhvm_backup_timestamp }}.log"
+  delegate_to: localhost
+  run_once: true
   when: rhvm_backup_log_file is not defined
 
 - name: Upload backup file to RHV Manager
   copy:
     src: "{{ rhvm_local_backup_dir }}/{{ rhvm_backup_file }}"
-    dest: "/var/tmp/{{ rhvm_backup_file }}"
+    dest: /var/tmp/{{ rhvm_backup_file }}
   when: inventory_hostname in groups.rhvm
 
 - name: Activate RHV Manager Global Maintenance mode
@@ -69,36 +74,51 @@
     state: stopped
   when: inventory_hostname in groups.rhvm
 
+- name: Create target remote_tmp for user postgres
+  file:
+    path: /var/lib/pgsql/.ansible/tmp
+    owner: postgres
+    group: postgres
+    mode: '0700'
+    state: directory
+  when: inventory_hostname in groups.rhvm
+
 - name: DROP engine database
-  shell: |
-    su postgres -c "psql -c 'DROP DATABASE engine;'"
+  command: psql -c 'DROP DATABASE engine;'
+  become: yes
+  become_user: postgres
   register: psql_status
   failed_when: psql_status.rc != 0 and 'does not exist' not in psql_status.stderr
   when: inventory_hostname in groups.rhvm
 
 - name: DROP ovirt_engine_history database
-  shell: |
-    su postgres -c "psql -c 'DROP DATABASE ovirt_engine_history;'"
+  command: psql -c 'DROP DATABASE ovirt_engine_history;'
+  become: yes
+  become_user: postgres
   register: psql_status
   failed_when: psql_status.rc != 0 and 'does not exist' not in psql_status.stderr
   when: inventory_hostname in groups.rhvm
 
 - name: CREATE engine database
-  shell: >
-    su postgres -c "psql -c
-    \\\"CREATE DATABASE engine OWNER engine TEMPLATE template0 ENCODING UTF8
-    LC_COLLATE 'en_US.UTF-8' LC_CTYPE 'en_US.UTF-8';\\\""
+  command: >
+    psql -c
+    "CREATE DATABASE engine OWNER engine TEMPLATE template0
+    ENCODING UTF8 LC_COLLATE 'en_US.UTF-8' LC_CTYPE 'en_US.UTF-8';"
+  become: yes
+  become_user: postgres
   when: inventory_hostname in groups.rhvm
 
 - name: CREATE ovirt_engine_history database
-  shell: >
-    su postgres -c "psql -c
-    \\\"CREATE DATABASE ovirt_engine_history OWNER engine TEMPLATE template0 ENCODING UTF8
-    LC_COLLATE 'en_US.UTF-8' LC_CTYPE 'en_US.UTF-8';\\\""
+  command: >
+    psql -c
+    "CREATE DATABASE ovirt_engine_history OWNER engine TEMPLATE template0
+    ENCODING UTF8 LC_COLLATE 'en_US.UTF-8' LC_CTYPE 'en_US.UTF-8';"
+  become: yes
+  become_user: postgres
   when: inventory_hostname in groups.rhvm
 
 - name: Run engine-backup in restore mode
-  shell: >
+  command: >
     engine-backup
     --mode=restore
     --scope=all
@@ -111,12 +131,13 @@
     --files-compressor=xz
     --db-compressor=xz
     --dwh-db-compressor=xz
-    --reports-db-compressor=xz
+    --cinderlib-db-compressor=xz
     --db-dump-format=custom
     --dwh-db-dump-format=custom
-    --reports-db-dump-format=custom
+    --cinderlib-db-dump-format=custom
     --db-restore-jobs=6
     --dwh-db-restore-jobs=6
+    --cinderlib-db-restore-jobs=6
   when: inventory_hostname in groups.rhvm
 
 - name: Start ovirt-engine
@@ -145,13 +166,13 @@
 
 - name: Remove backup file from RHV Manager
   file:
-    path: "/var/tmp/{{ rhvm_backup_file }}"
+    path: /var/tmp/{{ rhvm_backup_file }}
     state: absent
   when: inventory_hostname in groups.rhvm
 
 - name: Remove backup log file from RHV Manager
   file:
-    path: "/var/tmp/{{ rhvm_backup_log_file }}"
+    path: /var/tmp/{{ rhvm_backup_log_file }}
     state: absent
   when: inventory_hostname in groups.rhvm
 

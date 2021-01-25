@@ -17,6 +17,8 @@ currently not implemented but the playbook architecture allows that.
   * Playbook to verify Cisco hardware status with RHV (unimplemented)
 * [inventory_example.yml](inventory_example.yml)
   * Inventory for the playbooks
+* [rhv_backup.yml](rhv_backup.yml)
+  * Playbook to back and restore RHV Manager (test before use!)
 * [rhv_config.yml](rhv_config.yml)
   * Main RHV playbook
 * [rhv_deploy.yml](rhv_deploy.yml)

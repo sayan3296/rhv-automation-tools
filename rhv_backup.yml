@@ -1,0 +1,16 @@
+---
+- name: Backup RHV Manager
+  hosts: rhv_hosts, rhvm
+  gather_facts: no
+  max_fail_percentage: 0
+  tags: ['never', 'backup']
+  roles:
+  - rhv_manager_backup
+
+- name: Restore RHV Manager
+  hosts: rhv_hosts, rhvm
+  gather_facts: no
+  max_fail_percentage: 0
+  tags: ['never', 'restore']
+  roles:
+  - rhv_manager_restore

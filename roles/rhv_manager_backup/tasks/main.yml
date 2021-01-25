@@ -1,5 +1,4 @@
 ---
-### XXX TODO FIXME FOR RHV 4.4 ###
 - name: Abort if local backup directory is not defined
   fail:
     msg: Local backup directory rhvm_local_backup_dir not defined
@@ -9,16 +8,16 @@
 
 - name: Set timestamp for created files
   set_fact:
-    rhvm_backup_tstamp: "{{ lookup('pipe', 'date +%Y-%m-%d-%H-%M-%S') }}"
+    rhvm_backup_timestamp: "{{ lookup('pipe', 'date +%Y-%m-%d-%H-%M-%S') }}"
 
 - name: Set backup file name
   set_fact:
-    rhvm_backup_file: "{{ cluster_name }}_rhvm_backup_{{ rhvm_backup_tstamp }}.tar.xz"
+    rhvm_backup_file: "rhvm_backup_{{ cluster_domain }}_{{ rhvm_backup_timestamp }}.tar.xz"
   when: rhvm_backup_file is not defined
 
 - name: Set backup log file name
   set_fact:
-    rhvm_backup_log_file: "{{ cluster_name }}_rhvm_backup_{{ rhvm_backup_tstamp }}.log"
+    rhvm_backup_log_file: "rhvm_backup_{{ cluster_domain }}_{{ rhvm_backup_timestamp }}.log"
   when: rhvm_backup_log_file is not defined
 
 - name: Verify RHV Manager status
@@ -64,7 +63,7 @@
   when: inventory_hostname in groups.rhvm
 
 - name: Run engine-backup in backup mode
-  shell: >
+  command: >
     engine-backup
     --mode=backup
     --scope=all
@@ -75,12 +74,12 @@
     --files-compressor=xz
     --db-compressor=xz
     --dwh-db-compressor=xz
-    --reports-db-compressor=xz
+    --cinderlib-db-compressor=xz
     --db-dump-format=custom
     --dwh-db-dump-format=custom
-    --reports-db-dump-format=custom
-  register: eb_status
-  failed_when: false
+    --cinderlib-db-dump-format=custom
+  register: engine_backup_command
+  ignore_errors: true
   when: inventory_hostname in groups.rhvm
 
 - name: Start ovirt-engine
@@ -107,29 +106,29 @@
     state: started
   when: inventory_hostname in groups.rhvm
 
-- name: Download RHV Manager backup file to local backup directory
+- name: Download backup file to local backup directory
   fetch:
-    src: "/var/tmp/{{ rhvm_backup_file }}"
+    src: /var/tmp/{{ rhvm_backup_file }}
     dest: "{{ rhvm_local_backup_dir }}/{{ rhvm_backup_file }}"
     flat: yes
-  when: inventory_hostname in groups.rhvm and eb_status.rc == 0
+  when: inventory_hostname in groups.rhvm and engine_backup_command.rc == 0
 
-- name: Download log file if backup failed
+- name: Download backup log file if backup failed
   fetch:
-    src: "/var/tmp/{{ rhvm_backup_log_file }}"
+    src: /var/tmp/{{ rhvm_backup_log_file }}
     dest: "{{ rhvm_local_backup_dir}}/{{ rhvm_backup_log_file }}"
     flat: yes
-  when: inventory_hostname in groups.rhvm and eb_status.rc != 0
+  when: inventory_hostname in groups.rhvm and engine_backup_command.rc != 0
 
 - name: Remove backup file from RHV Manager
   file:
-    path: "/var/tmp/{{ rhvm_backup_file }}"
+    path: /var/tmp/{{ rhvm_backup_file }}
     state: absent
   when: inventory_hostname in groups.rhvm
 
 - name: Remove backup log file from RHV Manager
   file:
-    path: "/var/tmp/{{ rhvm_backup_log_file }}"
+    path: /var/tmp/{{ rhvm_backup_log_file }}
     state: absent
   when: inventory_hostname in groups.rhvm
 
@@ -140,4 +139,4 @@
 - name: Terminate with failure if backup failed
   fail:
     msg: Backup failed! Please investigate {{ rhvm_local_backup_dir}}/{{ rhvm_backup_log_file }}.
-  when: inventory_hostname in groups.rhvm and eb_status.rc != 0
+  when: inventory_hostname in groups.rhvm and engine_backup_command.rc != 0
