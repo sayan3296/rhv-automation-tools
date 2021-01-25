@@ -10,7 +10,7 @@
     vm_network: yes
     clusters:
     - { name: "{{ cluster_name }}" }
-  loop: "{{ networks.logical }}"
+  loop: "{{ networks.logical | default([], true) }}"
 
 - name: Assign cluster logical networks to RHV Host interfaces
   ovirt_host_network:
@@ -21,4 +21,4 @@
       boot_protocol: none
     interface: "{{ networks.nics[0].device if not networks.bonds or networks.bonds|length < 2 else networks.bonds[1].device }}"
     save: yes
-  loop: "{{ groups.rhv_hosts | product(networks.logical) | list | sort }}"
+  loop: "{{ groups.rhv_hosts | product(networks.logical | default([], true)) | list | sort }}"
