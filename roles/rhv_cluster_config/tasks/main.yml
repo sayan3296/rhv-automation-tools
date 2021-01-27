@@ -10,6 +10,15 @@
     username: admin@internal
     password: "{{ rhvm_password_admin }}"
 
+- name: Adjust RHV Manager storage domain parameters
+  ovirt_storage_domain:
+    auth: "{{ ovirt_auth }}"
+    name: hosted_storage
+    host: "{{ groups.rhv_hosts | sort | first }}"
+    data_center: "{{ datacenter_name }}"
+    critical_space_action_blocker: 1
+    warning_low_space: 1
+
 - name: Add RHV Hosts to cluster
   ovirt_host:
     auth: "{{ ovirt_auth }}"
