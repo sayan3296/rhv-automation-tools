@@ -193,7 +193,12 @@
   when: ovirt_engine_restart is not skipped
 
 - name: Verify RHV Manager HTTPS connection with openssl s_client
-  shell: echo GET / | openssl s_client -connect {{ hostvars[groups.rhvm[0]].hostname }}:443 -CAfile {{ ca_cert_file }}
+  shell: >
+    echo GET /
+    | openssl s_client -connect {{ hostvars[groups.rhvm[0]].hostname }}:443 -CAfile {{ ca_cert_file }}
+    | grep "verify error"
+  register: openssl_cmd
   changed_when: false
+  failed_when: "'error' in openssl_cmd.stdout"
   delegate_to: localhost
   run_once: true
