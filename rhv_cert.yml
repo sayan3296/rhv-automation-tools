@@ -1,5 +1,5 @@
 ---
-- name: Install RHV Manager CA Certificate
+- name: Install RHV Manager HTTPS certificates
   hosts: rhvm
   gather_facts: no
   max_fail_percentage: 0
