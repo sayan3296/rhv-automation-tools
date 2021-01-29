@@ -1,0 +1,145 @@
+---
+- name: Set local CA cert file name
+  set_fact:
+    ca_cert_file: "{{ role_path }}/files/ca.crt"
+  when: ca_cert_file is not defined
+
+- name: Check for local CA cert file
+  stat:
+    path: "{{ ca_cert_file }}"
+  register: ca_cert
+  delegate_to: localhost
+  run_once: true
+
+- name: Abort if local CA cert file not found
+  fail:
+    msg: Local CA cert file "{{ ca_cert_file }}" not found!
+  when: not ca_cert.stat.exists
+
+- name: Set local server cert key file name
+  set_fact:
+    cert_key_file: "{{ role_path }}/files/cert.key"
+  when: cert_key_file is not defined
+
+- name: Check for local server cert key file
+  stat:
+    path: "{{ cert_key_file }}"
+  register: cert_key
+  delegate_to: localhost
+  run_once: true
+
+- name: Abort if local server cert key file not found
+  fail:
+    msg: Local cert key file "{{ cert_key_file }}" not found!
+  when: not cert_key.stat.exists
+
+- name: Verify server cert key password is not set
+  command: "openssl rsa -in {{ cert_key_file }} -passin pass: -noout"
+  changed_when: false
+  delegate_to: localhost
+  run_once: true
+
+- name: Set local server cert file name
+  set_fact:
+    cert_file: "{{ role_path }}/files/cert.crt"
+  when: cert_file is not defined
+
+- name: Check for local server cert file
+  stat:
+    path: "{{ cert_file }}"
+  register: cert
+  delegate_to: localhost
+  run_once: true
+
+- name: Abort if local cert server file not found
+  fail:
+    msg: Local cert file "{{ cert_file }}" not found!
+  when: not cert.stat.exists
+
+- name: Copy CA cert to RHV Manager CA trust store
+  copy:
+    src: "{{ ca_cert_file }}"
+    dest: /etc/pki/ca-trust/source/anchors/{{ ca_cert_file | basename }}
+  register: ca_cert_copy
+
+- name: Update RHV Manager CA trust
+  command: update-ca-trust
+  when: ca_cert_copy is changed
+
+- name: Check for RHV Manager CA certificate link
+  stat:
+    path: /etc/pki/ovirt-engine/apache-ca.pem
+  register: ca_cert_link
+
+- name: Remove RHV Manager CA cerficate link
+  file:
+    path: /etc/pki/ovirt-engine/apache-ca.pem
+    state: absent
+  when: ca_cert_link.stat.islnk is not defined
+
+- name: Copy CA cert to RHV Manager PKI directory
+  copy:
+    src: "{{ ca_cert_file }}"
+    dest: /etc/pki/ovirt-engine/apache-ca.pem
+  register: ca_cert_copy
+
+- name: Copy server cert key to RHV Manager PKI directory
+  copy:
+    src: "{{ cert_key_file }}"
+    dest: /etc/pki/ovirt-engine/keys/apache.key.nopass
+    owner: root
+    group: ovirt
+    mode: '0640'
+  register: cert_key_copy
+
+- name: Copy server cert to RHV Manager PKI directory
+  copy:
+    src: "{{ cert_file }}"
+    dest: /etc/pki/ovirt-engine/certs/apache.cer
+  register: cert_copy
+
+- name: Restart httpd service
+  service:
+    name: httpd
+    state: restarted
+  when: ca_cert_copy is changed or cert_key_copy is changed or cert_copy is changed
+
+- name: Create Java trust store configuration
+  copy:
+    content: |
+      ENGINE_HTTPS_PKI_TRUST_STORE="/etc/pki/java/cacerts"
+      ENGINE_HTTPS_PKI_TRUST_STORE_PASSWORD=""
+    dest: /etc/ovirt-engine/engine.conf.d/99-custom-truststore.conf
+  register: java_store_config
+
+- name: Check for ovirt Engine websocket proxy configuration
+  stat:
+    path: /etc/ovirt-engine/ovirt-websocket-proxy.conf.d/99-setup.conf
+  register: websocket_proxy_config
+
+- name: Create ovirt Engine websocket proxy configuration
+  copy:
+    src: /etc/ovirt-engine/ovirt-websocket-proxy.conf.d/10-setup.conf
+    dest: /etc/ovirt-engine/ovirt-websocket-proxy.conf.d/99-setup.conf
+    remote_src: yes
+  when: not websocket_proxy_config.stat.exists
+
+- name: Update ovirt Engine websocket proxy cert configuration
+  replace:
+    dest: /etc/ovirt-engine/ovirt-websocket-proxy.conf.d/99-setup.conf
+    regexp: '^SSL_CERTIFICATE=.*'
+    replace: 'SSL_CERTIFICATE=/etc/pki/ovirt-engine/certs/apache.cer'
+  register: proxy_cert_config
+
+- name: Update ovirt Engine websocket proxy cert key configuration
+  replace:
+    dest: /etc/ovirt-engine/ovirt-websocket-proxy.conf.d/99-setup.conf
+    regexp: '^SSL_KEY=.*'
+    replace: 'SSL_KEY=/etc/pki/ovirt-engine/keys/apache.key.nopass'
+  register: proxy_cert_key_config
+
+- name: Restart ovirt-websocket-proxy service
+  service:
+    name: ovirt-websocket-proxy
+    state: restarted
+  when: proxy_cert_config is changed or proxy_cert_key_config is changed

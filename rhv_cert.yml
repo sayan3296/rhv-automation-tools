@@ -1,0 +1,8 @@
+---
+- name: Install RHV Manager CA Certificate
+  hosts: rhvm
+  gather_facts: no
+  max_fail_percentage: 0
+  tags: ['never', 'rhv', 'manager']
+  roles:
+  - rhv_manager_cert
