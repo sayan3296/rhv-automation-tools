@@ -19,6 +19,8 @@ currently not implemented but the playbook architecture allows that.
   * Inventory for the playbooks
 * [rhv_backup.yml](rhv_backup.yml)
   * Playbook to back and restore RHV Manager (test before use!)
+* [rhv_cert.yml](rhv_cert.yml)
+  * Playbook to update RHV Manager HTTPS certificate
 * [rhv_config.yml](rhv_config.yml)
   * Main RHV playbook
 * [rhv_deploy.yml](rhv_deploy.yml)
